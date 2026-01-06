@@ -82,44 +82,69 @@ async function generatePDF() {
             el.style.height = originalStyles[i].height;
         });
         overlay.style.display = 'flex';
-        overlay.innerText = "PDF完了！";
+        overlay.innerText = "PDF完了！保存中...";
 
         // PDF生成
         const imgData = canvas.toDataURL('image/png');
 
-        // A4縦設定
+        // A4縦
         const pdf = new jsPDF('p', 'mm', 'a4');
         const pageWidth = pdf.internal.pageSize.getWidth();
         const pageHeight = pdf.internal.pageSize.getHeight();
-
         const imgProps = pdf.getImageProperties(imgData);
 
-        // 画像の幅
         let finalWidth = pageWidth;
         let finalHeight = (imgProps.height * finalWidth) / imgProps.width;
 
-        // もし1ページに収まらない場合は縮小
         if (finalHeight > pageHeight) {
             finalHeight = pageHeight;
             finalWidth = (imgProps.width * finalHeight) / imgProps.height;
         }
 
         const x = (pageWidth - finalWidth) / 2;
-        // タイトル描画なし、シンプルに画像のみ
         pdf.addImage(imgData, 'PNG', x, 0, finalWidth, finalHeight);
 
-        // ファイル名用タイトル取得
+        // ファイル名生成
         let titleText = document.title.replace(/Notion/g, '').trim() || "保育記録";
-        const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-        pdf.save(`${titleText}_${dateStr}.pdf`);
+        const dateArg = new Date();
+        const dateStr = dateArg.toISOString().slice(0, 10).replace(/-/g, '');
+        const filename = `${titleText}_${dateStr}.pdf`;
 
-        overlay.innerText = "完了しました";
-        setTimeout(() => { if (document.body.contains(overlay)) document.body.removeChild(overlay); }, 2000);
+        // 1. ローカルバックアップ
+        pdf.save(filename);
+
+        // 2. サーバー送信
+        const pdfBase64 = pdf.output('datauristring');
+
+        try {
+            const response = await fetch('https://hoiku-recorder.vercel.app/api', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    filename: filename,
+                    fileData: pdfBase64,
+                    title: titleText,
+                    date: dateArg.toISOString()
+                })
+            });
+
+            if (!response.ok) throw new Error(`${response.status}`);
+
+            overlay.innerText = "完了！ドライブに保存しました";
+            overlay.style.backgroundColor = "rgba(0,128,0,0.8)";
+        } catch (e) {
+            console.error(e);
+            overlay.innerText = "PDFはできましたが、\n送信に失敗しました";
+            overlay.style.backgroundColor = "rgba(200,0,0,0.8)";
+            alert(`サーバー送信エラー: ${e.message}\nローカルのPDFを使ってください。`);
+        }
+
+        setTimeout(() => { if (document.body.contains(overlay)) document.body.removeChild(overlay); }, 4000);
         return "SUCCESS";
 
     } catch (error) {
         console.error('PDF生成エラー:', error);
-        if (overlay) overlay.innerText = "エラー復帰中...";
+        if (overlay) overlay.innerText = "えらー";
         alert('エラーが発生しました: ' + error.message);
         setTimeout(() => { if (document.body.contains(overlay)) document.body.removeChild(overlay); }, 2000);
         return "ERROR";

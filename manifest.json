@@ -10,7 +10,8 @@
     ],
     "host_permissions": [
         "https://www.notion.so/*",
-        "https://www.googleapis.com/*"
+        "https://www.googleapis.com/*",
+        "https://hoiku-recorder.vercel.app/*"
     ],
     "action": {
         "default_popup": "popup.html",
