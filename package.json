@@ -1,0 +1,10 @@
+{
+    "name": "notion-pdf-saver",
+    "version": "1.0.0",
+    "description": "",
+    "scripts": {},
+    "dependencies": {
+        "html2canvas": "^1.4.1",
+        "jspdf": "^2.5.1"
+    }
+}
